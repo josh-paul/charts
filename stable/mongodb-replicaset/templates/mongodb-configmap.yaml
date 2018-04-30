@@ -9,4 +9,13 @@ metadata:
   name: {{ template "mongodb-replicaset.fullname" . }}
 data:
   mongod.conf: |
+    replication: 
+      replSetName: {{ .Release.Name }}
+    {{- if eq .Release.Name "cfg" }}
+    sharding:
+      clusterRole: configsvr
+    {{- else }}
+    sharding:
+      clusterRole: shardsvr
+    {{- end }}
 {{ toYaml .Values.configmap | indent 4 }}

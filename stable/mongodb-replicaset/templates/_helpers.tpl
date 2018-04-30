@@ -52,3 +52,10 @@ Create the name for the key secret.
         {{- template "mongodb-replicaset.fullname" . -}}-keyfile
     {{- end -}}
 {{- end -}}
+{{- define "replicaSet" -}}
+    {{- if .Values.configmap.replication.replSetName -}}
+        {{- .Values.configmap.replication.replSetName -}}
+    {{- else -}}
+        {{- .Release.Name -}}
+    {{- end -}}
+{{- end -}}

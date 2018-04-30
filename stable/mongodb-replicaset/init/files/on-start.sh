@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -x
+
 replica_set=$REPLICA_SET
 script_name=${0##*/}
 
@@ -55,7 +57,9 @@ done
 ca_crt=/ca/tls.crt
 if [ -f $ca_crt  ]; then
     log "Generating certificate"
-    ca_key=/ca/tls.key
+    cp /ca/tls* /work-dir
+    ca_crt=/work-dir/tls.crt
+    ca_key=/work-dir/tls.key
     pem=/work-dir/mongo.pem
     ssl_args=(--ssl --sslCAFile $ca_crt --sslPEMKeyFile $pem)
 
@@ -64,6 +68,21 @@ cat >openssl.cnf <<EOL
 req_extensions = v3_req
 distinguished_name = req_distinguished_name
 [req_distinguished_name]
+countryName                     = Country Name (2 letter code)
+stateOrProvinceName             = State or Province Name
+localityName                    = Locality Name
+0.organizationName              = Organization Name
+organizationalUnitName          = Organizational Unit Name
+commonName                      = Common Name
+emailAddress                    = Email Address
+
+# Optionally, specify some defaults.
+countryName_default             = US
+stateOrProvinceName_default     = CA
+localityName_default            = San Jose
+0.organizationName_default      = Nutanix
+organizationalUnitName_default  = Xi
+
 [ v3_req ]
 basicConstraints = CA:FALSE
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
@@ -78,16 +97,15 @@ EOL
 
     # Generate the certs
     openssl genrsa -out mongo.key 2048
-    openssl req -new -key mongo.key -out mongo.csr -subj "/CN=$my_hostname" -config openssl.cnf
+    openssl req -new -key mongo.key -out mongo.csr -subj "/C=US/ST=CA/L=San Jose/O=Nutanix/OU=Xi/CN=$my_hostname" -config openssl.cnf
     openssl x509 -req -in mongo.csr \
         -CA $ca_crt -CAkey $ca_key -CAcreateserial \
         -out mongo.crt -days 3650 -extensions v3_req -extfile openssl.cnf
 
     rm mongo.csr
-    cat mongo.crt mongo.key > $pem
+    cat mongo.crt mongo.key >> $pem
     rm mongo.key mongo.crt
 fi
-
 
 log "Peers: ${peers[@]}"
 

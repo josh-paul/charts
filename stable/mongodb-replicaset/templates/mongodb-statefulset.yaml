@@ -8,6 +8,7 @@ metadata:
     release: {{ .Release.Name }}
   name: {{ template "mongodb-replicaset.fullname" . }}
 spec:
+  # podManagementPolicy: Parallel
   selector:
     matchLabels:
       app: {{ template "mongodb-replicaset.name" . }}
@@ -19,6 +20,7 @@ spec:
       labels:
         app: {{ template "mongodb-replicaset.name" . }}
         release: {{ .Release.Name }}
+        scheduling: separate
       annotations:
       {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
@@ -48,9 +50,14 @@ spec:
               valueFrom:
                 fieldRef:
                   apiVersion: v1
-                  fieldPath: metadata.namespace
+                  fieldPath: metadata.namespace  
+          {{- if .Values.replicaSet }}
             - name: REPLICA_SET
               value: {{ .Values.replicaSet }}
+          {{- else }}
+            - name: REPLICA_SET
+              value: {{ .Release.Name }}
+          {{- end }}
           {{- if .Values.auth.enabled }}
             - name: AUTH
               value: "true"
@@ -88,6 +95,7 @@ spec:
           ports:
             - name: peer
               containerPort: {{ .Values.port }}
+              hostPort: {{ .Values.port }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
           command:
@@ -198,7 +206,7 @@ spec:
             storage: {{ .Values.persistentVolume.size | quote }}
       {{- if .Values.persistentVolume.storageClass }}
       {{- if (eq "-" .Values.persistentVolume.storageClass) }}
-        storageClassName: ""
+        storageClassName: {{- template "mongodb-replicaset.fullname" . -}}
       {{- else }}
         storageClassName: "{{ .Values.persistentVolume.storageClass }}"
       {{- end }}
